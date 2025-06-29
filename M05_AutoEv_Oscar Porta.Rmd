@@ -1,0 +1,1191 @@
+---
+title: "Autoevaluación Módulo 5"
+author: "Óscar Porta | Mayo 2025"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: false
+    theme: default
+    highlight: tango
+    code_folding: hide 
+    css: customOPS_float.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.align = 'center',
+  fig.width = 12,
+  fig.height = 5,
+  out.width = '100%',
+  out.height = '80%'
+)
+
+mis_col<- c(
+  VerdeProfundo = "#2B7A78",
+  VerdeAgua = "#3AAFA9",
+  Naranja = "#FE6F5E",
+  Lavanda = "#A786DF",
+  GrisOscuro = "#17252A"
+)
+```
+
+
+El objetivo general de la evaluación es aprender a implementar los modelos de Data Science explicados en el módulo 5. Para este fin hemos escogido una base de datos del año 2017 para predecir el total del precio de casas en el mercado de Pekín (totalPrice) a través de diferentes métodos y algoritmos con el objetivo de seleccionar aquel o aquellos métodos que sean más óptimos.
+
+Variables de la base de datos
+
+  - Lng : coordenada de longitud utilizando el protocolo BD09
+  
+  - Lat: coordenada de latitud utilizando el protocolo BD09
+
+  - DOM: días activos en el mercado. Más información en https://en.wikipedia.org/wiki/Days_on_market
+
+  - followers: el número de personas que siguen la transacción.
+  
+  - square: número total de metros.
+
+  - livingRoom: número de habitaciones.
+
+  - drawingRoom: número de salones.
+
+  - kitchen: número de cocinas.
+
+  - bathroom: número de baños.
+
+  - floor: el número total de pisos en el edificio.
+
+  - buildingType: (tower) torre (1), bungalow (2), (combination of plate and tower), combinación de lámina y torre (3), (plate) lámina (4)
+
+  - renovationCondition: Otros (1), ásperas (2), sencillez (3), duras (4)
+
+  - buildingStructure: desconocida (1), mixta (2), ladrillo y madera (3), ladrillo y cemento (4), acero (5) acero y hormigón (6).
+
+  - ladderRatio: Describe cuántas escaleras tiene un residente en promedio.
+
+  - elevator: tiene ascensor (1) no tiene ascensor (0)
+
+  - fiveYearsProperty: si el dueño tiene la propiedad por menos de 5 años (1) en caso contrario (0)
+
+  - subway: si está cerca el metro (1) en caso contario (0)
+
+  - price: precio por metro cuadrado en yuanes.
+
+  - totalPrice: precio total en millones de yuanes.
+
+**Tareas encomendadas**
+  
+* **Preprocesado de la información:**
+
+  Dada la transcendencia de esta primera fase del análisis y de la cantidad de tiempo y recursos que conlleva (entre el 70 y el 80 por ciento del trabajo real) se considera muy importante realizar a fondo esta tarea antes de aplicar los modelos.
+
+
+* Resúmenes de la información a través de tablas y análisis gráficos.
+
+* Análisis de correlación.
+
+* Estudio de valores faltantes y valores extremos.
+
+* Selección de variables.
+
+Otros tratamientos que se consideren oportunos.
+
+* **Aplicación de Modelos:**
+
+Especifique y justifique cómo utiliza la muestra para la estimación de los modelos.
+
+Métodos básicos para la REGRESIÓN:
+
+* Árboles de decisión. (CART y Random Forest)
+
+* Métodos de vecindad (K-vecinos)
+
+* Redes Neuronales. (Perceptron Multicapa)
+
+* Máquinas de vectores soporte.
+
+* Bagging y Boosting.
+
+* Gradient Boosting.
+
+* Explicabilidad del modelo elegido como óptimo.
+
+Se valorará que se incluyan otros modelos y algoritmos que se consideren oportunos. Por ejemplo: Regresión Lineal, Regresión Lasso, y/o Redes neuronales de Base Radial, etcétera.
+
+
+# 1. Carga de Librerías
+
+En esta primera fase preparamos el entorno de trabajo cargando las librerías necesarias. Para ello, comprobamos previamente si están instaladas en el sistema. A continuación, cargamos los datos del mercado inmobiliario de Pekín del año 2017, que utilizaremos para desarrollar y evaluar distintos modelos de predicción.
+
+
+```{r carga_librerias_mod5, message=FALSE, warning=FALSE}
+
+# Instalación de paquetes solo si es necesario
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("readr")) install.packages("readr")
+if (!require("janitor")) install.packages("janitor")
+if (!require("skimr")) install.packages("skimr")
+if (!require("caret")) install.packages("caret")
+if (!require("GGally")) install.packages("GGally")
+if (!require("corrplot")) install.packages("corrplot")
+if (!require("rpart")) install.packages("rpart")
+if (!require("randomForest")) install.packages("randomForest")
+if (!require("class")) install.packages("class")
+if (!require("nnet")) install.packages("nnet")
+if (!require("e1071")) install.packages("e1071")
+if (!require("gbm")) install.packages("gbm")
+if (!require("xgboost")) install.packages("xgboost")
+if (!require("DALEX")) install.packages("DALEX")
+if (!require("DALEXtra")) install.packages("DALEXtra")
+if (!require("forcats")) install.packages("forcats")
+if (!require("recipes")) install.packages("recipes")
+if (!require("tidymodels")) install.packages("tidymodels")
+if (!require("data.table")) install.packages("data.table")
+if (!require("kableExtra")) install.packages("kableExtra")
+if (!require("magrittr")) install.packages("magrittr")
+if (!require("inspectdf")) install.packages("inspectdf")
+if (!require("reactable")) install.packages("reactable")
+if (!require("ggmap")) install.packages("ggmap")
+if (!require("ggdensity")) install.packages("ggdensity")
+if (!require("geomtextpath")) install.packages("geomtextpath")
+if (!require("tictoc")) install.packages("tictoc")
+
+# Carga de librerías
+library(tidyverse)
+library(readr)
+library(janitor)
+library(skimr)
+library(caret)
+library(GGally)
+library(corrplot)
+library(rpart)
+library(randomForest)
+library(class)
+library(nnet)
+library(e1071)
+library(gbm)
+library(xgboost)
+library(DALEX)
+library(DALEXtra)
+library(forcats)
+library(recipes)
+library(tidymodels)
+library(data.table)
+library(kableExtra)
+library(magrittr)   # Para usar %<>%
+library(inspectdf)
+library(reactable)
+library(ggmap)
+library(ggdensity)
+library(geomtextpath)
+library(knitr)
+library(tictoc)
+
+```
+
+# 2. Etapa EDA (Exploratory Data Analysis)
+
+Leemos el fichero original con los datos del mercado inmobiliario de Pekín del año 2017. A continuación, realizamos una limpieza básica: eliminamos posibles filas duplicadas y transformamos algunas variables numéricas en variables categóricas, ya que representan información cualitativa. Posteriormente, mostramos las primeras observaciones.
+
+```{r lectura_datos_eda, message=FALSE, warning=FALSE}
+
+# Leer el conjunto de datos original
+datOri <- fread('/Users/oscar/Desktop/BIG DATA/2o TRIMESTRE/MODULO 5_Mineria de datos 1/3_Autoevaluacion/M05_AutoEv_Oscar Porta/mercado_beijing_2017.csv') %>% 
+  as.data.table()
+
+# Eliminar filas duplicadas
+datOri %<>% 
+  distinct() %>%
+  as.data.table()
+
+# Conversión de variables numéricas a factores
+datOri %<>%
+  mutate( buildingType        = as.factor(buildingType)) %>%
+  mutate( renovationCondition = as.factor(renovationCondition)) %>%
+  mutate( buildingStructure   = as.factor(buildingStructure)) %>%
+  mutate( fiveYearsProperty   = as.factor(fiveYearsProperty)) %>%
+  mutate( subway              = as.factor(subway)) %>%
+  mutate( elevator            = as.factor(elevator)) %>%
+  as.data.table()
+
+# Visualización interactiva de las primeras observaciones con estilo reactable
+reactable(head(datOri, 10),
+          bordered = TRUE,
+          highlight = TRUE,
+          striped = TRUE,
+          pagination = FALSE,
+          class = "reactable-table")
+          
+```
+<br>
+
+Realizamos un análisis automático del conjunto de datos utilizando funciones de la librería inspectdf. Esto nos permitirá entender mejor la estructura, distribución y calidad de los datos antes de realizar cualquier modelado. Representamos las correlaciones más fuertes, los desequilibrios de categorías, el uso de memoria, la presencia de valores ausentes y las distribuciones de variables numéricas.
+
+```{r eda_inspectdf, message=FALSE, warning=FALSE}
+# EDA automático de variables categóricas
+x <- inspect_cat(datOri)
+show_plot(x)
+
+# Correlación entre columnas numéricas (solo las mayores o iguales a 0.5 en valor absoluto)
+x <- inspect_cor(datOri)
+x <- x %>% dplyr::filter(abs(corr) >= 0.5 | corr <= -0.5) %>% as_tibble()
+show_plot(x)
+
+# Categoría más frecuente por cada variable categórica
+x <- inspect_imb(datOri)
+show_plot(x)
+
+# Uso de memoria por columna
+x <- inspect_mem(datOri)
+show_plot(x)
+
+# Porcentaje de valores NA por columna
+x <- inspect_na(datOri)
+show_plot(x)
+
+# Histogramas de variables numéricas
+x <- inspect_num(datOri)
+show_plot(x)
+
+# Tipo de cada variable
+x <- inspect_types(datOri)
+show_plot(x)
+```
+
+<br>
+
+De esta primera iteración en el EDA, obtenemos las siguientes conclusiones:
+
+Variables categóricas:
+
+La mayoría de variables presentan la cardinalidad esperada según la descripción original del dataset.
+
+Frecuencia mayoritaria en variables categóricas:
+
+* buildingStructure: 6 (71%)
+
+* elevator: 1 (70%)
+
+* subway: 1 (60%)
+
+* fiveYearsProperty: 1 (56%)
+
+* renovationCondition: 1 (46%)
+
+* buildingType: 4 (38%)
+
+Datos faltantes (porcentaje):
+
+* buildingType: 4.2%
+
+Correlación de variables (top 5):
+
+* livingRoom - square: 0.743
+	
+* bathRoom - square: 0.716
+	
+* square - totalPrice: 0.644
+	
+* drawingRoom - square: 0.580
+
+
+Variables numéricas destacadas:
+
+
+* DOM presenta valores atípicos por encima de 1000, cuando el 75% está por debajo de 200.
+
+* followers tiene valores extremos por encima de 600, con una mediana de 3.
+
+* ladderRatio tiene una mediana de 0.33 pero llega hasta valores de 10.
+
+* price y square presentan distribuciones asimétricas, concentradas en valores bajos y colas largas a la derecha.
+
+A partir de este análisis, tomamos las siguientes decisiones:
+
+
+* Imputaremos buildingType, que presenta un porcentaje reducido de valores perdidos.
+
+* Aunque algunas variables numéricas presentan outliers, por ahora solo tomamos nota para decidir más adelante posibles transformaciones.
+
+* Recodificamos los niveles de las variables categóricas para facilitar su interpretación en gráficos y modelos.
+	
+```{r transformar_categoricas, message=FALSE, warning=FALSE}
+
+# Recodificar buildingType
+datOri$buildingType <- factor(datOri$buildingType,
+                              labels = c("torre", "bungalow", "combinacion", "lamina"))
+
+# Recodificar renovationCondition
+datOri$renovationCondition <- factor(datOri$renovationCondition,
+                                     labels = c("otros", "asperas", "sencillez", "duras"))
+
+# Recodificar buildingStructure
+datOri$buildingStructure <- factor(datOri$buildingStructure,
+                                   labels = c("desconocida", "mixta", "ladrillo y madera",
+                                              "ladrillo y cemento", "acero", "acero y hormigon"))
+
+# Recodificar elevator
+datOri$elevator <- factor(datOri$elevator,
+                          labels = c("No", "Si"))
+
+# Recodificar fiveYearsProperty
+datOri$fiveYearsProperty <- factor(datOri$fiveYearsProperty,
+                                   labels = c("No", "Si"))
+
+# Recodificar subway
+datOri$subway <- factor(datOri$subway,
+                        labels = c("No", "Si"))
+
+# Volver a graficar composición de variables categóricas
+x <- inspect_cat(datOri)
+show_plot(x)
+```	
+
+# 3. Visualización de Datos Espaciales
+
+Antes de proceder a la modelización, realizamos una visualización espacial básica para observar la distribución geográfica de diferentes variables del dataset. En concreto, representamos la localización de los inmuebles según varias variables categóricas y el precio. Esto nos permite detectar si existe una posible concentración geográfica asociada a ciertas categorías, lo cual puede ser relevante en el análisis predictivo posterior.
+```{r mapas_sin_fondo, message=FALSE, warning=FALSE}
+
+# Visualización geográfica sin mapa base (pero manteniendo lat/lon)
+
+# Función general para graficar distribución geográfica por variable
+mapa_simple_por_variable <- function(var) {
+  ggplot(datOri, aes(x = Lng, y = Lat, color = .data[[var]])) +
+    geom_point(alpha = 0.6, size = 1.3) +
+    facet_wrap(as.formula(paste("~", var))) +
+    ggtitle(paste("Distribución espacial según:", var)) +
+    theme_minimal() +
+    theme(axis.title = element_blank())
+}
+
+# Mapas categóricos
+mapa_simple_por_variable("buildingType")
+mapa_simple_por_variable("subway")
+mapa_simple_por_variable("elevator")
+mapa_simple_por_variable("buildingStructure")
+mapa_simple_por_variable("renovationCondition")
+
+# Mapa continuo de price
+ggplot(datOri, aes(x = Lng, y = Lat, color = price)) +
+  geom_point(size = 1.3, alpha = 0.9) +
+  ggtitle("Distribución espacial de Price") +
+  theme_minimal() +
+  theme(axis.title = element_blank())
+```
+Del análisis espacial realizado a partir de las coordenadas de longitud y latitud, podemos extraer las siguientes observaciones clave para cada una de las variables representadas:
+
+* buildingType:
+
+Observamos que los edificios del tipo “torre” se concentran principalmente en el centro de la ciudad, mientras que en las zonas periféricas predomina el tipo “lámina”. Además, detectamos un pequeño núcleo urbano con presencia destacada de edificios tipo “bungalow”, lo que podría corresponder a un casco antiguo o una zona residencial tradicional.
+
+* subway:
+
+Las viviendas cercanas a estaciones de metro se concentran en el centro de Pekín. En la periferia, la proporción de propiedades cerca del metro disminuye notablemente, lo que puede estar reflejando una menor densidad de infraestructuras de transporte público en esas zonas.
+
+* elevator:
+
+Las propiedades con ascensor se encuentran principalmente en el área central de la ciudad. En cambio, en los barrios periféricos predominan las propiedades sin ascensor, lo cual podría relacionarse con la antigüedad de las construcciones o con edificios de menor altura.
+
+* buildingStructure:
+
+En el centro de la ciudad se concentran las estructuras más modernas, construidas en acero y hormigón. En cambio, hacia la periferia predominan las construcciones mixtas o de ladrillo y cemento. También se identifica un punto donde se concentran edificaciones de ladrillo y madera, lo que podría indicar una zona de valor histórico o residencial tradicional.
+
+* renovationCondition:
+
+No se detecta un patrón espacial claro en cuanto al estado de renovación de las propiedades. Los distintos niveles de esta variable se encuentran distribuidos de forma bastante homogénea a lo largo del mapa.
+
+* price:
+
+Los precios por metro cuadrado tienden a ser más elevados en el centro urbano, donde además la densidad de viviendas es mayor. A medida que nos alejamos del centro hacia las zonas periféricas, los precios disminuyen, lo que refleja una clara correlación espacial entre localización y valor del inmueble.
+
+# 4. Modelo Inicial H2O
+
+Antes de construir modelos con transformaciones más cuidadas, decidimos ejecutar un primer modelo baseline usando la función h2o.automl(), que nos permite probar múltiples algoritmos automáticamente y obtener información valiosa como:
+
+* El tipo de modelo con mejor ajuste.
+
+* Un valor de referencia del error del modelo (baseline).
+
+* La importancia relativa de las variables.
+
+
+
+En primer lugar, inicializamos el entorno de H2O para poder lanzar modelos de machine learning sobre nuestra base de datos. Esta operación se realiza solo una vez por sesión y debe ejecutarse de forma interactiva, no al generar el documento HTML.
+
+```{r h2oInit,eval=FALSE, echo=TRUE, message=FALSE, warning=FALSE}
+
+# Inicializar H2O
+library(h2o)
+h2o.init()
+h2o.no_progress()
+```
+***Este bloque debe ejecutarse manualmente cada vez que se abra RStudio, pero no se ejecuta al knitear para evitar errores de conexión con H2O.***
+
+<br>
+
+A continuación, ejecutamos el primer modelo baseline con H2O AutoML. Este proceso entrena múltiples modelos automáticamente durante 5 minutos, usando validación cruzada y dejando fuera GLM y StackedEnsemble para centrarnos en métodos más complejos. Este bloque se ejecuta exclusivamente en RStudio y se desactiva al generar el HTML (eval=FALSE) para evitar errores o entrenamientos innecesarios.
+
+```{r modelo_baseline_h2o_lanzar,eval=FALSE, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Convertir a formato H2O
+data <- as.h2o(datOri)
+
+# Dividir el dataset (train, valid, test)
+splits <- h2o.splitFrame(
+  data = data, 
+  ratios = c(0.7, 0.15),
+  destination_frames = c("train", "valid", "test"),
+  seed = 1
+)
+train <- splits[[1]]
+valid <- splits[[2]]
+test  <- splits[[3]]
+
+# Definir variables
+y <- "totalPrice"
+x <- setdiff(names(data), y)
+
+# Ejecutar H2O AutoML (5 minutos, sin GLM ni StackedEnsemble)
+aml <- h2o.automl(
+  x                  = x,
+  y                  = y,
+  training_frame     = train,
+  validation_frame   = valid,
+  nfold              = 3,
+  max_runtime_secs   = 300,
+  stopping_metric    = "RMSE",
+  exclude_algos      = c("GLM", "StackedEnsemble"),
+  stopping_tolerance = 0.1,
+  stopping_rounds    = 5,
+  seed               = 12345,
+  sort_metric        = "RMSE"
+)
+```
+
+
+Una vez finaliza la ejecución del AutoML, guardamos los resultados más relevantes: el modelo líder, su tabla de rendimiento, el gráfico de importancia de variables y el error RMSE. Esto nos permite volver a usarlos más adelante sin reentrenar.
+
+
+```{r modelo_baseline_h2o_guardar,eval=FALSE, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Guardar leaderboard, modelo, RMSE y variable importancia
+best_mod     <- aml@leader
+lb_df        <- as.data.frame(aml@leaderboard)
+var_import   <- h2o.varimp(best_mod)
+aml_perf     <- h2o.performance(model = best_mod, newdata = test)
+err_val_pre  <- h2o.rmse(aml_perf)
+
+# Crear carpeta si no existe
+if (!dir.exists("resultados")) dir.create("resultados")
+
+# Guardar todo
+h2o.saveModel(best_mod, path = "resultados", force = TRUE)
+saveRDS(lb_df, file = "resultados/lb_df.rds")
+saveRDS(var_import, file = "resultados/var_import.rds")
+saveRDS(err_val_pre, file = "resultados/err_val_pre.rds")
+saveRDS(best_mod, file = "resultados/best_mod.rds")
+```
+
+
+Para mostrar los resultados en el informe sin volver a ejecutar el modelo, cargamos los objetos guardados en el paso anterior. Este bloque sí se ejecuta al knit.
+
+```{r modelo_baseline_h2o_cargar, eval=TRUE, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Cargar leaderboard, RMSE y variable importance guardados
+lb_df        <- readRDS("resultados/lb_df.rds")
+var_import   <- readRDS("resultados/var_import.rds")
+err_val_pre  <- readRDS("resultados/err_val_pre.rds")
+best_mod     <- readRDS("resultados/best_mod.rds") 
+```
+
+Mostramos a continuación los resultados más relevantes del AutoML: los 10 mejores y 10 peores modelos, el gráfico de importancia de variables y el RMSE obtenido en test. Este bloque sí se ejecuta al knit.
+
+```{r modelo_baseline_h2o_resultados, eval=TRUE, message=FALSE, warning=FALSE, echo=TRUE}
+
+# Top-10 mejores modelos
+lb_df %>% head(10) %>%
+  kbl(caption = "Top-10 Mejores Modelos Ejecutados - Ordenados por RMSE") %>%
+  kable_minimal()
+
+# Top-10 peores modelos
+lb_df %>% tail(10) %>%
+  kbl(caption = "Top-10 Peores Modelos Ejecutados - Ordenados por RMSE") %>%
+  kable_minimal()
+
+# Gráfico de variables importantes
+ggplot(var_import[1:10, ], aes(x = fct_reorder(variable, scaled_importance), y = scaled_importance)) +
+  geom_col(fill = 'darkgreen') +
+  coord_flip() +
+  labs(
+    title    = "VARIABLES IMPORTANTES",
+    subtitle = "Top-10",
+    y        = 'Importancia Escalada',
+    x        = "Variable"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title   = element_text(size = 14, face = "bold", colour = "black"),
+    axis.title.x = element_text(size = 14, face = "bold", colour = "black"),
+    axis.title.y = element_text(size = 14, face = "bold", colour = "black"),
+    axis.text.x  = element_text(size = 12, face = "bold", colour = "black"),
+    axis.text.y  = element_text(size = 12, face = "bold", colour = "black")
+  )
+
+# Mostrar RMSE final
+err_val_pre
+
+# Mostrar modelo ganador
+best_mod
+
+```
+
+
+**Conclusiones del modelo baseline AutoML**
+
+Tras ejecutar el primer modelo base con H2O AutoML durante 5 minutos, se han entrenado un total de 284 modelos, siendo el mejor de ellos un modelo de tipo Gradient Boosting Machine (GBM). Este modelo alcanza un RMSE de 40.63 en validación cruzada y de 74.95 en la muestra de test, lo que constituye nuestro error base o baseline para comparaciones futuras.
+
+El análisis de importancia de variables nos muestra una concentración muy clara en solo dos variables: square (superficie en metros cuadrados del inmueble) y price (precio por metro cuadrado). Ambas dominan la predicción con muchísima diferencia respecto al resto de variables.
+
+Este resultado confirma que estas dos variables actúan como predictoras excesivas (hiperpredictoras), especialmente price, que está directamente relacionada con la variable objetivo totalPrice, lo que puede generar sobreajuste y resta valor interpretativo al modelo desde una perspectiva empresarial.
+
+El resto de variables (como bathRoom, buildingType, fiveYearsProperty o floor) tienen un peso mínimo, lo cual puede estar condicionado por la fuerte influencia de square y price. En próximos pasos, eliminaremos estas variables y construiremos nuevas transformaciones (feature engineering) con el objetivo de mejorar la interpretabilidad y robustez del modelo.
+
+# 5. Feature Enginering
+
+Con el conocimiento adquirido tras la ejecución de nuestro primer modelo AutoML, en el que observamos una fuerte dependencia de las variables square y price, decidimos realizar una fase de ingeniería de variables para mejorar la explicabilidad y robustez del modelo.
+
+En primer lugar, decidimos eliminar las variables price, square y DOM por su posible papel como variables hiperpredictoras o de escasa aportación predictiva independiente.
+
+A continuación, construimos nuevas variables con el objetivo de capturar relaciones relevantes en el contexto de la predicción del precio total:
+
+* fe_dist: calculamos la distancia euclídea entre la localización de la vivienda (Lng, Lat) y un punto de referencia. Esta variable nos permite incorporar una medida de ubicación más refinada.
+
+* fe_tothabi: agregamos el número total de habitaciones (livingRoom, drawingRoom, kitchen, bathRoom) como un único indicador de tamaño funcional del piso.
+
+* fe_factors: unificamos todas las variables categóricas en un único string que resume la composición del piso. Esta transformación puede capturar interacciones complejas entre factores.
+
+*Imputamos la variable buildingType en aquellos registros con valores NA, utilizando el resto de variables como referencia.
+
+Con estas transformaciones, preparamos un nuevo dataset y volvemos a ejecutar un modelo de AutoML con H2O para evaluar el impacto de estos cambios.
+
+
+En esta sección vamos a realizar una serie de transformaciones para mejorar la calidad del modelo. Primero creamos nuevas variables y eliminamos aquellas que consideramos hiperpredictoras.
+
+```{r crear_variables_ingenieria, message=FALSE, warning=FALSE}
+# Total habitaciones y distancia euclidea
+datroom <- datOri %>%
+  select(livingRoom, drawingRoom, kitchen, bathRoom) %>%
+  as.data.table()
+
+datOri %<>%
+  mutate(
+    fe_tothabi = rowSums(datroom),
+    fe_dist     = sqrt(Lng^2 + Lat^2)  # distancia desde el origen como ejemplo
+  ) %>%
+  select(-price, -square, -DOM) %>%  # eliminamos hiperpredictoras
+  as.data.table()
+```
+
+
+Imputamos `buildingType` con un modelo predictivo rápido. (Este paso sí se ejecuta en knit.)
+
+```{r imputar_buildingtype, message=FALSE, warning=FALSE}
+library(missRanger)
+
+# Imputación con missRanger
+set.seed(123)
+datOriImp <- missRanger(datOri, verbose = 0)
+# Creamos la variable `fe_factors`, que es un string resumen con las variables categóricas.
+datOrigd <- datOriImp %>%
+  mutate(fe_factors = paste(buildingType, renovationCondition, buildingStructure,
+                            fiveYearsProperty, subway, elevator, sep = "_")) %>%
+  mutate(fe_factors = as.factor(fe_factors)) %>%
+  as.data.table()
+```
+
+Lanzamos el segundo AutoML, esta vez con las nuevas variables. (Este chunk se ejecuta sólo una vez)
+
+```{r automl_feature_engineering_lanzar, eval=FALSE, message=FALSE, warning=FALSE}
+h2o.no_progress()
+
+data <- as.h2o(datOrigd)
+
+splits <- h2o.splitFrame(
+  data = data, 
+  ratios = c(0.7, 0.15),
+  destination_frames = c("train", "valid", "test"),
+  seed = 1
+)
+train <- splits[[1]]
+valid <- splits[[2]]
+test  <- splits[[3]]
+
+# Variables
+y <- "totalPrice"
+x <- setdiff(names(data), y)
+
+# AutoML 2
+aml2 <- h2o.automl(
+  x                  = x,
+  y                  = y,
+  training_frame     = train,
+  validation_frame   = valid,
+  nfold              = 3,
+  max_runtime_secs   = 300,
+  stopping_metric    = "RMSE",
+  exclude_algos      = c("GLM", "StackedEnsemble"),
+  stopping_tolerance = 0.1,
+  stopping_rounds    = 5,
+  seed               = 12345,
+  sort_metric        = "RMSE"
+)
+```
+
+
+Guardamos los resultados del AutoML 2 para usarlos sin volver a entrenar.
+
+```{r automl_feature_engineering_guardar, eval=FALSE, message=FALSE, warning=FALSE}
+# Objetos importantes
+best_mod2     <- aml2@leader
+lb_df2        <- as.data.frame(aml2@leaderboard)
+var_import2   <- h2o.varimp(best_mod2)
+aml2_perf     <- h2o.performance(model = best_mod2, newdata = test)
+err_val_post  <- h2o.rmse(aml2_perf)
+
+# Guardamos
+if (!dir.exists("resultados")) dir.create("resultados")
+h2o.saveModel(best_mod2, path = "resultados", force = TRUE)
+saveRDS(lb_df2,      file = "resultados/lb_df2.rds")
+saveRDS(var_import2, file = "resultados/var_import2.rds")
+saveRDS(err_val_post,file = "resultados/err_val_post.rds")
+saveRDS(best_mod2,   file = "resultados/best_mod2.rds")
+```
+
+Cargamos los resultados del segundo AutoML. (Este chunk sí se ejecuta en knit)
+
+```{r automl_feature_engineering_cargar, eval=TRUE, message=FALSE, warning=FALSE}
+lb_df2        <- readRDS("resultados/lb_df2.rds")
+var_import2   <- readRDS("resultados/var_import2.rds")
+err_val_post  <- readRDS("resultados/err_val_post.rds")
+best_mod2     <- readRDS("resultados/best_mod2.rds")
+```
+
+Mostramos los resultados obtenidos por AutoML tras el Feature Engineering
+
+```{r automl_feature_engineering_resultados, eval=TRUE, message=FALSE, warning=FALSE}
+# Top modelos
+lb_df2 %>% head(10) %>%
+  kbl(caption = "Top-10 Mejores Modelos Ejecutados - Ordenados por RMSE (AutoML 2)") %>%
+  kable_minimal()
+
+lb_df2 %>% tail(10) %>%
+  kbl(caption = "Top-10 Peores Modelos Ejecutados - Ordenados por RMSE (AutoML 2)") %>%
+  kable_minimal()
+
+# Gráfico de importancia
+ggplot(var_import2[1:10, ], aes(x = fct_reorder(variable, scaled_importance), y = scaled_importance)) +
+  geom_col(fill = 'darkgreen') +
+  coord_flip() +
+  labs(
+    title    = "VARIABLES IMPORTANTES",
+    subtitle = "Top-10 (Feature Engineering)",
+    y        = 'Importancia Escalada',
+    x        = "Variable"
+  ) +
+  theme_bw() +
+  theme(
+    plot.title   = element_text(size = 14, face = "bold", colour = "black"),
+    axis.title.x = element_text(size = 14, face = "bold", colour = "black"),
+    axis.title.y = element_text(size = 14, face = "bold", colour = "black"),
+    axis.text.x  = element_text(size = 12, face = "bold", colour = "black"),
+    axis.text.y  = element_text(size = 12, face = "bold", colour = "black")
+  )
+
+# Mostrar RMSE
+err_val_post
+
+# Mostrar modelo
+best_mod2
+```
+
+```{r comparativa_error_prepost, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Comparativa de error pre y post feature engineering
+error_df <- data.frame(
+  Pre  = err_val_pre,
+  Post = err_val_post
+)
+
+error_df %>%
+  kbl(caption = "Diferencias de error pre-post (RMSE en test)") %>%
+  kable_minimal()
+```
+
+
+En la primera iteración del modelo, donde incluíamos las variables price y square, el mejor modelo alcanzaba un RMSE de 74.95. Tras aplicar las transformaciones propuestas (eliminación de variables hiperpredictoras y creación de nuevas variables como fe_dist, fe_tothabi y fe_factors), el modelo con menor RMSE es un GBM, que obtiene un RMSE de 180.05.
+
+Este incremento del error nos indica que las variables eliminadas, especialmente price y square, aportaban una alta capacidad predictiva directa. Sin embargo, su uso puede ocultar relaciones relevantes o suponer una forma de sobreajuste. A pesar del aumento del error, el nuevo modelo tiene un perfil más interpretable y adecuado para una aplicación práctica más robusta.
+
+En cuanto a las variables más relevantes tras el proceso de feature engineering, destaca especialmente fe_factors, seguida de livingRoom, Lat y fe_tothabi, lo cual confirma que las nuevas variables están capturando patrones de interés.
+
+Dado que el rendimiento ha disminuido notablemente, en el siguiente apartado vamos a explorar si es posible mejorar los resultados ajustando de forma manual los algoritmos más prometedores observados (como GBM) mediante tuning de hiperparámetros.
+
+
+# 6. Comparación de Modelos (caret)
+
+Tras la ejecución de AutoML y el análisis de variables importantes, queremos comprobar si podemos mejorar el nivel de error utilizando una aproximación más controlada y personalizada con la librería caret. Para ello, entrenaremos varios algoritmos por separado, definiendo una estrategia de validación cruzada y evaluando su rendimiento.
+
+A continuación, definimos un flag entrena que utilizaremos para evitar que estos modelos se reentrenen cada vez que knitamos el documento. Este bloque se ejecuta solo una vez manualmente (cuando entrena = 1), y luego lo dejamos desactivado (entrena = 0) para que el HTML cargue los modelos ya guardados sin volver a entrenarlos.
+
+```{r caret_configuracion_entrenamiento, eval=TRUE, message=FALSE, warning=FALSE}
+entrena <- 1
+
+if (entrena == 1) {
+  control <- trainControl(
+    method        = "repeatedcv", 
+    number        = 10,
+    repeats       = 3, 
+    returnResamp  = "final",
+    allowParallel = TRUE
+  )
+  
+  metrica <- "RMSE"
+}
+```
+
+## 6.1. Creación del conjunto de entrenamiento y test para los modelos caret
+
+Aquí separamos el conjunto de datos en entrenamiento (80%) y test (20%) y guardamos los objetos para reutilizarlos después. Este bloque también se ejecuta solo una vez manualmente y se desactiva para el knit.
+
+```{r caret_crear_particiones_guardar, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(100)
+  train_sample <- createDataPartition(y = datOrigd$totalPrice, p = 0.8, list = FALSE)
+  train_reg    <- datOriImp[train_sample,]
+  test_reg     <- datOriImp[-train_sample,]
+  
+  save(train_reg, test_reg, file = "./traintest_reg.RData")
+}
+```
+
+##  6.2 GLM
+
+Este bloque entrena un modelo lineal regularizado (glmnet), con preprocesamiento de centrado y escalado, y validación cruzada múltiple (repeatedcv). Usamos family = "poisson" por coherencia con el ejemplo del profesor, aunque si estuviéramos haciendo una regresión pura, se puede usar también gaussian si lo ves más lógico en tu caso (lo dejamos como en el ejemplo por fidelidad).
+
+El saveRDS() guarda el modelo en disco, así que cuando pases entrena <- 0, tu RMarkdown simplemente lo leerá sin volver a entrenar, ahorrando tiempo.
+
+
+```{r caret_modelo_glmnet, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  
+  if (!dir.exists("./output")) dir.create("./output")
+  
+  tic()
+  modelo_glm_reg <- train(
+    totalPrice ~., 
+    data      = train_reg, 
+    method    = "glmnet",
+    family    = "poisson", 
+    metric    = metrica, 
+    preProc   = c("center", "scale"), 
+    trControl = control
+  )
+
+  saveRDS(modelo_glm_reg, "./output/modelo_glm_reg.RDS")
+  toc()
+}
+```
+
+## 6.3 Modelo LASSO
+
+Como una variante del anterior, fijando el parámetro alpha = 1 para penalizar exclusivamente con L1.
+
+```{r caret_modelo_lasso, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+    
+  if (!dir.exists("./output")) dir.create("./output")
+  
+  tic()
+  modelo_lasso <- train(
+    totalPrice ~., 
+    data      = train_reg, 
+    method    = "glmnet",
+    family    = "poisson", 
+    tuneGrid  = expand.grid(alpha = 1, lambda = seq(0.0001, 1, length = 10)),
+    metric    = metrica, 
+    preProc   = c("center", "scale"), 
+    trControl = control
+  )
+
+  saveRDS(modelo_lasso, "./output/modelo_lasso.RDS")
+  toc()
+}
+```
+
+##  6.4 K Vecinos
+
+Este modelo no hace suposiciones sobre la distribución y compara observaciones por proximidad, tras escalar las variables.
+
+```{r caret_modelo_knn, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  
+  if (!dir.exists("./output")) dir.create("./output")
+
+  tic()
+  modelo_knn <- train(
+    totalPrice ~., 
+    data      = train_reg, 
+    method    = "knn", 
+    metric    = metrica, 
+    preProc   = c("center", "scale"), 
+    trControl = control,
+    tuneLength = 10
+  )
+
+  saveRDS(modelo_knn, "./output/modelo_knn.RDS")
+  toc()
+}
+```
+
+##  6.5 Árbol de decisión (CART) 
+
+Usamos rpart. Este modelo es interpretativo y útil para explorar relaciones no lineales.
+
+```{r caret_modelo_cart, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+
+  if (!dir.exists("./output")) dir.create("./output")
+
+  tic()
+  modelo_cart <- train(
+    totalPrice ~., 
+    data      = train_reg, 
+    method    = "rpart", 
+    metric    = metrica, 
+    trControl = control, 
+    tuneLength = 10
+  )
+
+  saveRDS(modelo_cart, "./output/modelo_cart.RDS")
+  toc()
+}
+```
+
+
+##  6.6 Random Forest
+
+Combinamos múltiples árboles, muy potente y robusto frente al overfitting.
+
+
+```{r caret_modelo_rf, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  
+  if (!dir.exists("./output")) dir.create("./output")
+
+  tic()
+  modelo_rf <- train(
+    totalPrice ~., 
+    data      = train_reg, 
+    method    = "rf", 
+    metric    = metrica, 
+    trControl = control, 
+    tuneLength = 5
+  )
+
+  saveRDS(modelo_rf, "./output/modelo_rf.RDS")
+  toc()
+}
+```
+
+
+##  6.7 Máquinas de Vector Soporte 1 (SVM 1)
+
+En primer lugar, entrenamos un modelo SVM usando un rango moderado de valores para los hiperparámetros C y sigma. Esta configuración inicial nos permitirá observar si el modelo tiene capacidad predictiva razonable antes de ajustar más finamente.
+
+```{r caret_modelo_svm1, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+
+  if (!dir.exists("./output")) dir.create("./output")
+
+  grid_svm1 <- expand.grid(C = c(1, 1.5, 2), sigma = c(0.1, 0.01))
+
+  tic()
+  modelo_svm1 <- train(
+    totalPrice ~ ., 
+    data      = train_reg,
+    method    = "svmRadial", 
+    metric    = metrica, 
+    preProc   = c("center", "scale"),
+    tuneGrid  = grid_svm1,
+    trControl = control
+  )
+
+  saveRDS(modelo_svm1, "./output/modelo_svm1.RDS")
+  toc()
+}
+```
+
+
+##  6.8 - Máquinas de Vector Soporte 2 (SVM 2)
+
+Tras revisar los resultados del primer modelo, decidimos afinar la búsqueda usando un rango de C más elevado y sigma más bajo, esperando reducir el error. Esta segunda iteración permite captar relaciones más complejas.
+
+```{r caret_modelo_svm2, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  
+  if (!dir.exists("./output")) dir.create("./output")
+
+  grid_svm2 <- expand.grid(C = c(10, 20, 50), sigma = c(0.04, 0.08))
+
+  tic()
+  modelo_svm2 <- train(
+    totalPrice ~ ., 
+    data      = train_reg,
+    method    = "svmRadial", 
+    metric    = metrica, 
+    preProc   = c("center", "scale"),
+    tuneGrid  = grid_svm2,
+    trControl = control
+  )
+
+  saveRDS(modelo_svm2, "./output/modelo_svm2.RDS")
+  toc()
+}
+```
+
+##  6.9 - Máquinas de Vector Soporte 3 (SVM 3 - Final)
+
+Como tercera y última iteración, reducimos aún más sigma y aumentamos C para observar si el modelo mejora ligeramente en rendimiento. Este modelo se considera nuestra versión final de SVM.
+
+
+```{r caret_modelo_svm3, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+
+  if (!dir.exists("./output")) dir.create("./output")
+
+  grid_svm3 <- expand.grid(C = c(55, 65), sigma = c(0.02, 0.03))
+
+  tic()
+  modelo_svm3 <- train(
+    totalPrice ~ ., 
+    data      = train_reg,
+    method    = "svmRadial", 
+    metric    = metrica, 
+    preProc   = c("center", "scale"),
+    tuneGrid  = grid_svm3,
+    trControl = control
+  )
+
+  saveRDS(modelo_svm3, "./output/modelo_svm3.RDS")
+  toc()
+}
+```
+
+##  6.10 - Perceptrón Multicapa (MLP)
+
+A continuación entrenamos un modelo de tipo Perceptrón Multicapa (MLP), una red neuronal sencilla. Usamos como hiperparámetros el número de unidades ocultas (size) y el parámetro de regularización (decay). Este modelo puede captar relaciones no lineales, por lo que nos interesa ver si aporta valor añadido frente a los anteriores.
+
+
+```{r caret_modelo_mlp, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  if (!dir.exists("./output")) dir.create("./output")
+
+  grid_mlp <- expand.grid(size = c(3, 5, 7), decay = c(0.1, 0.01))
+
+  tic()
+  modelo_mlp <- train(
+    totalPrice ~ ., 
+    data      = train_reg,
+    method    = "nnet", 
+    metric    = metrica, 
+    preProc   = c("center", "scale"),
+    tuneGrid  = grid_mlp,
+    trControl = control,
+    linout    = TRUE,
+    trace     = FALSE
+  )
+
+  saveRDS(modelo_mlp, "./output/modelo_mlp.RDS")
+  toc()
+}
+```
+
+
+##  6.11 Bagging (Bootstrap Aggregating)
+
+Probamos ahora el método Bagging con árboles de regresión como base. Este enfoque reduce la varianza del modelo combinando múltiples árboles simples entrenados sobre muestras bootstrapped del conjunto original.
+
+```{r caret_modelo_bagging, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  if (!dir.exists("./output")) dir.create("./output")
+
+  tic()
+  modelo_bagging <- train(
+    totalPrice ~ ., 
+    data      = train_reg,
+    method    = "treebag", 
+    metric    = metrica, 
+    trControl = control
+  )
+
+  saveRDS(modelo_bagging, "./output/modelo_bagging.RDS")
+  toc()
+}
+```
+
+##  6.12 GBM (Gradient Boosting Machines)
+
+Por último, entrenamos un modelo de tipo GBM, basado en boosting de árboles. Es uno de los métodos más potentes, y nos interesa evaluar su comportamiento en este caso. Ajustamos el número de árboles (n.trees), la profundidad (interaction.depth) y la tasa de aprendizaje (shrinkage).
+
+```{r caret_modelo_gbm, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  if (!dir.exists("./output")) dir.create("./output")
+
+  grid_gbm <- expand.grid(
+    n.trees          = c(100, 150),
+    interaction.depth = c(1, 3, 5),
+    shrinkage        = c(0.01, 0.1),
+    n.minobsinnode   = 10
+  )
+
+  tic()
+  modelo_gbm <- train(
+    totalPrice ~ ., 
+    data      = train_reg,
+    method    = "gbm", 
+    metric    = metrica, 
+    verbose   = FALSE,
+    tuneGrid  = grid_gbm,
+    trControl = control
+  )
+
+  saveRDS(modelo_gbm, "./output/modelo_gbm.RDS")
+  toc()
+}
+```
+
+##  6.13 Xtreme Gradient Boosting (XGBoost)
+
+Este modelo aplica la técnica de boosting con una implementación muy eficiente y optimizada. Ajustamos múltiples hiperparámetros: tasa de aprendizaje (eta), profundidad máxima de los árboles (max_depth), penalización por complejidad (gamma), y parámetros de muestreo. Es habitual que obtenga muy buenos resultados en regresión.
+
+```{r caret_modelo_xgb, eval=FALSE, message=FALSE, warning=FALSE}
+if (entrena == 1) {
+  set.seed(7)
+  if (!dir.exists("./output")) dir.create("./output")
+
+  tic()
+
+  grid_xgbTree <- expand.grid(
+    nrounds          = 500,
+    eta              = c(0.001, 0.3),
+    max_depth        = c(6, 8),
+    gamma            = c(1, 3), 
+    subsample        = c(0.75, 1),
+    min_child_weight = c(2, 3), 
+    colsample_bytree = 1
+  )
+
+  modelo_xgb_reg <- train( 
+    totalPrice ~ ., 
+    data      = train_reg, 
+    method    = "xgbTree", 
+    metric    = metrica,  
+    preProc   = c("center", "scale"),
+    trControl = control,   
+    tuneGrid  = grid_xgbTree
+  )
+
+  saveRDS(modelo_xgb_reg, "./output/modelo_xgb_reg.RDS")
+
+  toc()
+}
+```
+
+# 7. Funciones para sacar resultados de los modelos
+
+En este apartado vamos a definir las funciones necesarias para evaluar todos los modelos entrenados en el bloque anterior. Para ello, cargamos los modelos desde los archivos .RDS, así como los conjuntos de entrenamiento y test ya preprocesados. Además, creamos una función para formatear las salidas de forma profesional con flextable, y otra función principal que calculará las métricas R², RMSE y MAE para cada modelo sobre el conjunto de entrenamiento y el de test.
+
+```{r cargar_modelos_registrados, eval=FALSE, message=FALSE, warning=FALSE}
+# Cargamos todos los modelos previamente entrenados
+reg_mod_glm     <- readRDS("./output/modelo_glm_reg.RDS")
+reg_mod_lasso   <- readRDS("./output/modelo_lasso_reg.RDS")
+reg_mod_knn     <- readRDS("./output/modelo_knn_reg.RDS")
+reg_mod_cart    <- readRDS("./output/modelo_cart_reg.RDS")
+reg_mod_rf      <- readRDS("./output/modelo_rf_reg.RDS")
+reg_mod_svm     <- readRDS("./output/modelo_svm_reg.RDS")
+reg_mod_svm_2   <- readRDS("./output/modelo_svm_reg_2.RDS")
+reg_mod_svm_3   <- readRDS("./output/modelo_svm_reg_3.RDS")
+reg_mod_mlp     <- readRDS("./output/modelo_mlp_reg.RDS")
+reg_mod_gbm     <- readRDS("./output/modelo_gbm_reg.RDS")
+reg_mod_bag     <- readRDS("./output/modelo_bag_reg.RDS")
+reg_mod_xgb     <- readRDS("./output/modelo_xgb_reg.RDS")
+# reg_mod_keras <- readRDS("./output/modelo_mlpKeras_reg.RDS")
+```
+
+Seguidamente, cargamos los conjuntos de datos de entrenamiento y test, y definimos una función auxiliar para dar formato a las tablas de resultados.
+
+```{r funciones_auxiliares, eval=FALSE, message=FALSE, warning=FALSE}
+
+# Cargamos conjuntos de train y test
+load("./traintest_reg.RData")
+
+# Función auxiliar de formato para flextable
+maquetar <- function(x){
+  ft <- flextable(data = x) %>%
+    fontsize(size = 10, part = "body") %>% 
+    fontsize(size = 12, part = "header")
+  ft <- color(ft, color = "orange", part = "header")
+  return(autofit(ft))
+}
+```
+
+##  7.1 Tablas y gráficos de los diferentes modelos para clientes registrados
+
+
+Por último, definimos una función principal que nos permitirá calcular automáticamente las métricas R², RMSE y MAE de cualquier modelo sobre los datos de entrenamiento y test. La salida se devuelve en un formato visual adecuado.
+
+
+```{r cargar_modelos_registrados, eval=FALSE, message=FALSE, warning=FALSE}
+# Función para calcular métricas y devolver tabla
+Medidas_Modelo_reg <- function(modelo) {
+  pred.train           <- as.data.frame(predict(modelo, train_reg, type = "raw"))
+  names(pred.train)    <- "Prediccion"
+  pred.train           <- cbind.data.frame(pred.train, Respuesta = train_reg$totalPrice)
+  R2.train             <- R2(pred.train$Prediccion, pred.train$Respuesta)
+  RMSE.train           <- RMSE(pred.train$Prediccion, pred.train$Respuesta)
+  MAE.train            <- MAE(pred.train$Prediccion, pred.train$Respuesta)
+
+  pred.test            <- as.data.frame(predict(modelo, test_reg, type = "raw"))
+  names(pred.test)     <- "Prediccion"
+  pred.test            <- cbind.data.frame(pred.test, Respuesta = test_reg$totalPrice)
+  R2.test              <- R2(pred.test$Prediccion, pred.test$Respuesta)
+  RMSE.test            <- RMSE(pred.test$Prediccion, pred.test$Respuesta)
+  MAE.test             <- MAE(pred.test$Prediccion, pred.test$Respuesta)
+  
+  Muestra <- c("Entrenamiento", "Test")
+  R2      <- c(R2.train,  R2.test)
+  RMSE    <- c(RMSE.train,  RMSE.test)
+  MAE     <- c(MAE.train,  MAE.test)
+  
+  resul <- data.frame(Muestra, R2, RMSE, MAE)
+  maquetar(resul)
+}
+```
+
+
+
+```{r cargar_modelos_registrados, eval=FALSE, message=FALSE, warning=FALSE}
+```{r cargar_modelos_registrados, eval=FALSE, message=FALSE, warning=FALSE}
